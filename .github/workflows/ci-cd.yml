@@ -15,10 +15,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: echo "Manju2001$" | docker login -u manjuappu1375 --password-stdin
 
       - name: Build and push ptc-setup
         uses: docker/build-push-action@v5
