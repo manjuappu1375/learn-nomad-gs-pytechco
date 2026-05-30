@@ -1,0 +1,102 @@
+name: PyTechCo CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push ptc-setup
+        uses: docker/build-push-action@v5
+        with:
+          context: src
+          file: src/setup.Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/pytechco-setup:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/pytechco-setup:${{ github.sha }}
+
+      - name: Build and push ptc-employee
+        uses: docker/build-push-action@v5
+        with:
+          context: src
+          file: src/employee.Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/pytechco-employee:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/pytechco-employee:${{ github.sha }}
+
+      - name: Build and push ptc-web
+        uses: docker/build-push-action@v5
+        with:
+          context: src
+          file: src/webviewer.Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/pytechco-web:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/pytechco-web:${{ github.sha }}
+
+      - name: Build and push ptc-viewer
+        uses: docker/build-push-action@v5
+        with:
+          context: extra
+          file: extra/viewer.Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/pytechco-viewer:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/pytechco-viewer:${{ github.sha }}
+
+  nomad-deploy:
+    name: Deploy to Nomad via API
+    runs-on: self-hosted
+    needs: build-and-push
+
+    steps:
+      - name: Deploy pytechco-redis
+        run: |
+          nomad job run -output \
+            /home/ubuntu/learn-nomad-getting-started/aws/learn-nomad-gs-pytechco/nomad/pytechco-redis.hcl \
+            > /tmp/redis.json
+          curl -s -X POST "http://localhost:4646/v1/jobs" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/redis.json
+
+      - name: Deploy pytechco-web
+        run: |
+          nomad job run -output \
+            /home/ubuntu/learn-nomad-getting-started/aws/learn-nomad-gs-pytechco/nomad/pytechco-web.hcl \
+            > /tmp/web.json
+          curl -s -X POST "http://localhost:4646/v1/jobs" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/web.json
+
+      - name: Deploy pytechco-employee
+        run: |
+          nomad job run -output \
+            /home/ubuntu/learn-nomad-getting-started/aws/learn-nomad-gs-pytechco/nomad/pytechco-employee.hcl \
+            > /tmp/employee.json
+          curl -s -X POST "http://localhost:4646/v1/jobs" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/employee.json
+
+      - name: Check deployment status
+        run: |
+          for job in pytechco-redis pytechco-web pytechco-employee; do
+            echo "Status of $job:"
+            curl -s "http://localhost:4646/v1/job/$job" | \
+              python3 -c "import sys,json; d=json.load(sys.stdin); print('  Status:', d.get('Status'))"
+          done
