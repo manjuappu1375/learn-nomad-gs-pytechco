@@ -35,7 +35,7 @@ EOH
       driver = "docker"
 
       config {
-        image = "ghcr.io/hashicorp-education/learn-nomad-getting-started/ptc-employee:1.0"
+        image = "manjuappu1375/pytechco-employee:latest"
         // args = [
         //     "--employee-type", "sales_engineer"
         // ]
