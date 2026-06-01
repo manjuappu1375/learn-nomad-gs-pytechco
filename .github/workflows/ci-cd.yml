@@ -14,40 +14,44 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set short commit ID
+        id: vars
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
       - name: Log in to Docker Hub
         run: echo "Manju2001$" | docker login -u manjuappu1375 --password-stdin
 
       - name: Build and push ptc-setup
         run: |
           docker build -t manjuappu1375/pytechco-setup:latest \
-            -t manjuappu1375/pytechco-setup:${{ github.sha }} \
+            -t manjuappu1375/pytechco-setup:${{ steps.vars.outputs.SHORT_SHA }} \
             -f src/setup.Dockerfile src
           docker push manjuappu1375/pytechco-setup:latest
-          docker push manjuappu1375/pytechco-setup:${{ github.sha }}
+          docker push manjuappu1375/pytechco-setup:${{ steps.vars.outputs.SHORT_SHA }}
 
       - name: Build and push ptc-employee
         run: |
           docker build -t manjuappu1375/pytechco-employee:latest \
-            -t manjuappu1375/pytechco-employee:${{ github.sha }} \
+            -t manjuappu1375/pytechco-employee:${{ steps.vars.outputs.SHORT_SHA }} \
             -f src/employee.Dockerfile src
           docker push manjuappu1375/pytechco-employee:latest
-          docker push manjuappu1375/pytechco-employee:${{ github.sha }}
+          docker push manjuappu1375/pytechco-employee:${{ steps.vars.outputs.SHORT_SHA }}
 
       - name: Build and push ptc-web
         run: |
           docker build -t manjuappu1375/pytechco-web:latest \
-            -t manjuappu1375/pytechco-web:${{ github.sha }} \
+            -t manjuappu1375/pytechco-web:${{ steps.vars.outputs.SHORT_SHA }} \
             -f src/webviewer.Dockerfile src
           docker push manjuappu1375/pytechco-web:latest
-          docker push manjuappu1375/pytechco-web:${{ github.sha }}
+          docker push manjuappu1375/pytechco-web:${{ steps.vars.outputs.SHORT_SHA }}
 
       - name: Build and push ptc-viewer
         run: |
           docker build -t manjuappu1375/pytechco-viewer:latest \
-            -t manjuappu1375/pytechco-viewer:${{ github.sha }} \
+            -t manjuappu1375/pytechco-viewer:${{ steps.vars.outputs.SHORT_SHA }} \
             -f extra/viewer.Dockerfile extra
           docker push manjuappu1375/pytechco-viewer:latest
-          docker push manjuappu1375/pytechco-viewer:${{ github.sha }}
+          docker push manjuappu1375/pytechco-viewer:${{ steps.vars.outputs.SHORT_SHA }}
 
   nomad-deploy:
     name: Deploy to Nomad via API
@@ -55,6 +59,28 @@ jobs:
     needs: build-and-push
 
     steps:
+      - name: Set short commit ID
+        id: vars
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Update Nomad job images with short commit ID
+        run: |
+          SHORT_SHA=${{ steps.vars.outputs.SHORT_SHA }}
+
+          sed -i "s|image = \"manjuappu1375/pytechco-web:.*\"|image = \"manjuappu1375/pytechco-web:$SHORT_SHA\"|g" \
+            /home/ubuntu/learn-nomad-getting-started/aws/learn-nomad-gs-pytechco/nomad/pytechco-web.hcl
+
+          sed -i "s|image = \"manjuappu1375/pytechco-employee:.*\"|image = \"manjuappu1375/pytechco-employee:$SHORT_SHA\"|g" \
+            /home/ubuntu/learn-nomad-getting-started/aws/learn-nomad-gs-pytechco/nomad/pytechco-employee.hcl
+
+          sed -i "s|image = \".*ptc-web:.*\"|image = \"manjuappu1375/pytechco-web:$SHORT_SHA\"|g" \
+            /home/ubuntu/learn-nomad-getting-started/aws/learn-nomad-gs-pytechco/nomad/pytechco-web.hcl
+
+          sed -i "s|image = \".*ptc-employee:.*\"|image = \"manjuappu1375/pytechco-employee:$SHORT_SHA\"|g" \
+            /home/ubuntu/learn-nomad-getting-started/aws/learn-nomad-gs-pytechco/nomad/pytechco-employee.hcl
+
+          echo "Updated image tags to: $SHORT_SHA"
+
       - name: Deploy pytechco-redis
         run: |
           nomad job run -output \
