@@ -35,7 +35,7 @@ EOH
       driver = "docker"
 
       config {
-        image = "manjuappu1375/pytechco-web:latest"
+        image = "manjuappu1375/pytechco-web:fixed"
         ports = ["web"]
       }
     }
