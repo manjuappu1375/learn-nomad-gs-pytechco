@@ -2,10 +2,45 @@ job "pytechco-web" {
   type = "service"
 
   group "ptc-web" {
-    count = 1
+    count = 2
+
+    scaling {
+      enabled = true
+      min     = 2
+      max     = 5
+
+      policy {
+        cooldown            = "2m"
+        evaluation_interval = "30s"
+
+        check "cpu_usage" {
+          source = "nomad-apm"
+          query  = "avg_cpu"
+
+          strategy "target-value" {
+            target = 35  
+          }
+        }
+
+        check "memory_usage" {
+          source = "nomad-apm"
+          query  = "avg_memory"
+
+          strategy "target-value" {
+            target = 35  
+          }
+        }
+
+        target "nomad-target" {
+          job   = "pytechco-web"
+          group = "ptc-web"
+        }
+      }
+    }
+
     network {
       port "web" {
-        static = 5000
+        to = 5000
       }
     }
 
@@ -16,9 +51,13 @@ job "pytechco-web" {
     }
 
     task "ptc-web-task" {
-      # Retrieves the .Address and .Port connection values for
-      # redis-svc with nomadService and saves them to env vars
-      # REFRESH_INTERVAL is how often the UI refreshes in milliseconds
+      driver = "docker"
+
+      resources {
+        cpu    = 256
+        memory = 256
+      }
+
       template {
         data        = <<EOH
 {{ range nomadService "redis-svc" }}
@@ -32,10 +71,8 @@ EOH
         env         = true
       }
 
-      driver = "docker"
-
       config {
-        image = "manjuappu1375/pytechco-web:fixed"
+        image = "manjuappu1375/pytechco-web:latest"
         ports = ["web"]
       }
     }
