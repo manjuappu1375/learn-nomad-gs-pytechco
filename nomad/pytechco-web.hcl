@@ -2,11 +2,11 @@ job "pytechco-web" {
   type = "service"
 
   group "ptc-web" {
-    count = 2
+    count = 1
 
     scaling {
       enabled = true
-      min     = 2
+      min     = 1
       max     = 5
 
       policy {
@@ -18,7 +18,7 @@ job "pytechco-web" {
           query  = "avg_cpu"
 
           strategy "target-value" {
-            target = 35  
+            target = 70  
           }
         }
 
@@ -27,7 +27,7 @@ job "pytechco-web" {
           query  = "avg_memory"
 
           strategy "target-value" {
-            target = 35  
+            target = 80  
           }
         }
 
@@ -72,7 +72,7 @@ EOH
       }
 
       config {
-        image = "manjuappu1375/pytechco-web:latest"
+        image = "manjuappu1375/pytechco-web:fixed"
         ports = ["web"]
       }
     }

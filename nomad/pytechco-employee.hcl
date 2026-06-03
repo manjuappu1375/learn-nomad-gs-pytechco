@@ -35,7 +35,7 @@ EOH
       driver = "docker"
 
       config {
-        image = "manjuappu1375/pytechco-employee:c47f3f0"
+        image = "manjuappu1375/pytechco-employee:d1d76b7"
         // args = [
         //     "--employee-type", "sales_engineer"
         // ]
